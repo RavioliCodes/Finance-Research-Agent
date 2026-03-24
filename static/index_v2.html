@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexaGen – Strategic Research Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0e11;--surface:#13171c;--surface2:#1a1f27;--border:#242b35;
+  --text:#e4e8ee;--text2:#8892a0;--accent:#3b82f6;--accent2:#60a5fa;
+  --green:#22c55e;--yellow:#eab308;--red:#ef4444;--purple:#a78bfa;
+  --radius:12px;
+}
+html{font-size:15px}
+body{
+  font-family:'DM Sans',system-ui,sans-serif;
+  background:var(--bg);color:var(--text);
+  min-height:100vh;overflow-x:hidden;
+}
+.shell{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+/* Sidebar */
+.sidebar{
+  background:var(--surface);border-right:1px solid var(--border);
+  padding:28px 20px;display:flex;flex-direction:column;gap:24px;
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.logo-icon{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),#8b5cf6);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:16px;color:#fff;
+}
+.logo-text{font-size:1.15rem;font-weight:700;letter-spacing:-.02em}
+.logo-sub{font-size:.72rem;color:var(--text2);margin-top:2px}
+.sidebar h3{
+  font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--text2);font-weight:500;
+}
+.doc-list{display:flex;flex-direction:column;gap:6px;list-style:none}
+.doc-item{
+  font-size:.82rem;padding:8px 10px;border-radius:8px;
+  background:var(--surface2);color:var(--text2);
+  display:flex;align-items:center;gap:8px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat-card{background:var(--surface2);border-radius:8px;padding:12px}
+.stat-val{font-size:1.3rem;font-weight:700;color:var(--accent2)}
+.stat-label{font-size:.68rem;color:var(--text2);margin-top:2px}
+.sample-q{
+  font-size:.82rem;color:var(--text2);cursor:pointer;
+  padding:8px 10px;border-radius:8px;background:var(--surface2);
+  transition:all .15s;border:1px solid transparent;
+}
+.sample-q:hover{border-color:var(--accent);color:var(--text)}
+/* Main */
+.main{padding:32px 40px;max-width:960px;display:flex;flex-direction:column;gap:24px}
+.main-header h1{font-size:1.6rem;font-weight:700;letter-spacing:-.03em}
+.main-header p{color:var(--text2);font-size:.88rem;margin-top:4px}
+/* Input */
+.input-wrap{
+  display:flex;gap:10px;position:sticky;top:0;z-index:10;
+  background:var(--bg);padding:16px 0;align-items:center;
+}
+.input-wrap input{
+  flex:1;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px 18px;
+  color:var(--text);font-size:.95rem;font-family:inherit;
+  outline:none;transition:border .15s;
+}
+.input-wrap input:focus{border-color:var(--accent)}
+.input-wrap input::placeholder{color:var(--text2)}
+.btn{
+  background:var(--accent);color:#fff;border:none;border-radius:var(--radius);
+  padding:0 24px;height:48px;font-family:inherit;font-weight:600;font-size:.85rem;
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.btn:hover{filter:brightness(1.12)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn-research{background:linear-gradient(135deg,var(--accent),#8b5cf6)}
+/* Mode toggle */
+.mode-toggle{
+  display:flex;background:var(--surface);border-radius:8px;
+  border:1px solid var(--border);overflow:hidden;
+}
+.mode-btn{
+  padding:8px 16px;font-family:inherit;font-size:.78rem;
+  font-weight:500;cursor:pointer;border:none;
+  background:transparent;color:var(--text2);transition:all .15s;
+}
+.mode-btn.active{background:var(--accent);color:#fff}
+.mode-btn:first-child{border-right:1px solid var(--border)}
+/* Messages */
+.messages{display:flex;flex-direction:column;gap:20px}
+.msg{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:20px 24px;
+  animation:fadeUp .3s ease;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.msg-q{
+  font-weight:600;font-size:1rem;margin-bottom:12px;
+  display:flex;align-items:flex-start;gap:10px;
+}
+.msg-q::before{
+  content:'Q';flex-shrink:0;
+  width:26px;height:26px;border-radius:8px;
+  background:var(--accent);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.72rem;font-weight:700;margin-top:1px;
+}
+.msg-mode{
+  display:inline-block;font-size:.68rem;font-weight:500;
+  padding:2px 8px;border-radius:4px;margin-left:8px;
+  vertical-align:middle;
+}
+.msg-mode.quick{background:rgba(59,130,246,.15);color:var(--accent2)}
+.msg-mode.research{background:rgba(167,139,250,.15);color:var(--purple)}
+.msg-answer{font-size:.9rem;line-height:1.7;color:var(--text);white-space:pre-wrap}
+.msg-answer strong{color:var(--accent2)}
+.msg-meta{
+  margin-top:16px;padding-top:14px;border-top:1px solid var(--border);
+  display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-size:.75rem;
+}
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 10px;border-radius:20px;font-weight:500;
+}
+.badge.high{background:rgba(34,197,94,.12);color:var(--green)}
+.badge.medium{background:rgba(234,179,8,.12);color:var(--yellow)}
+.badge.low{background:rgba(239,68,68,.12);color:var(--red)}
+.meta-time{color:var(--text2)}
+.meta-steps{color:var(--purple);font-weight:500}
+/* Reasoning steps */
+.reasoning-toggle{
+  font-size:.78rem;color:var(--purple);cursor:pointer;
+  background:none;border:none;font-family:inherit;margin-top:8px;
+}
+.reasoning-steps{
+  margin-top:8px;display:none;flex-direction:column;gap:8px;
+}
+.reasoning-steps.open{display:flex}
+.step-card{
+  background:var(--surface2);border-radius:8px;padding:12px 14px;
+  border-left:3px solid var(--border);font-size:.8rem;
+}
+.step-card.final{border-left-color:var(--green)}
+.step-label{
+  font-size:.68rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:.05em;color:var(--text2);margin-bottom:4px;
+}
+.step-thought{color:var(--text);margin-bottom:6px;line-height:1.5}
+.step-action{
+  font-family:'JetBrains Mono',monospace;font-size:.72rem;
+  color:var(--accent2);padding:4px 8px;background:var(--bg);
+  border-radius:4px;display:inline-block;margin-bottom:4px;
+}
+.step-obs{
+  font-size:.72rem;color:var(--text2);margin-top:4px;
+  max-height:100px;overflow-y:auto;line-height:1.4;
+  white-space:pre-wrap;
+}
+/* Sources */
+.sources-toggle{
+  font-size:.78rem;color:var(--accent2);cursor:pointer;
+  background:none;border:none;font-family:inherit;margin-top:8px;
+}
+.sources-list{
+  margin-top:8px;font-size:.78rem;color:var(--text2);
+  display:none;flex-direction:column;gap:4px;
+}
+.sources-list.open{display:flex}
+.source-item{
+  font-family:'JetBrains Mono',monospace;font-size:.72rem;
+  padding:4px 8px;background:var(--surface2);border-radius:6px;
+}
+/* Loading */
+.loading{display:flex;align-items:center;gap:10px;padding:20px;color:var(--text2)}
+.spinner{
+  width:20px;height:20px;border:2px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin .6s linear infinite;
+}
+.spinner.research{border-top-color:var(--purple)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:80px 20px;color:var(--text2)}
+.empty h2{font-size:1.2rem;color:var(--text);margin-bottom:8px}
+@media(max-width:768px){
+  .shell{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .main{padding:20px}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div>
+      <div class="logo">
+        <div class="logo-icon">N</div>
+        <div>
+          <div class="logo-text">NexaGen AI</div>
+          <div class="logo-sub">Strategic Research Agent</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h3>Indexed Documents</h3>
+      <ul class="doc-list" id="docList">
+        <li class="doc-item"><span class="icon">...</span>Loading</li>
+      </ul>
+    </div>
+
+    <div>
+      <h3>Index Stats</h3>
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><div class="stat-val" id="statDocs">-</div><div class="stat-label">Documents</div></div>
+        <div class="stat-card"><div class="stat-val" id="statChunks">-</div><div class="stat-label">Chunks</div></div>
+        <div class="stat-card"><div class="stat-val" id="statVocab">-</div><div class="stat-label">Vocab Size</div></div>
+        <div class="stat-card"><div class="stat-val" id="statMode">-</div><div class="stat-label">Mode</div></div>
+      </div>
+    </div>
+
+    <div>
+      <h3>Recent Questions</h3>
+      <div id="recentQuestions" style="display:flex;flex-direction:column;gap:6px">
+        <div class="doc-item" style="font-size:.78rem;justify-content:center">No questions yet</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="main-header">
+      <h1>Strategic Research Agent</h1>
+      <p>Quick answers or deep autonomous research — grounded in your company documents</p>
+    </div>
+
+    <div class="input-wrap">
+      <input type="text" id="questionInput" placeholder="Ask a strategic question..."
+             onkeydown="if(event.key==='Enter')submitQuestion()">
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="modeQuick" onclick="setMode('quick')">Quick</button>
+        <button class="mode-btn" id="modeResearch" onclick="setMode('research')">Research</button>
+      </div>
+      <button class="btn" id="askBtn" onclick="submitQuestion()">Ask</button>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="empty" id="emptyState">
+        <h2>Ready for your questions</h2>
+        <p><strong>Quick mode</strong> — fast single-pass answers for factual questions.<br>
+           <strong>Research mode</strong> — multi-step autonomous reasoning for strategic analysis.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+let isLoading = false;
+let currentMode = 'quick';
+const HISTORY_KEY = 'nexagen_v2_recent';
+const MAX_HISTORY = 5;
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('modeQuick').classList.toggle('active', mode === 'quick');
+  document.getElementById('modeResearch').classList.toggle('active', mode === 'research');
+  const btn = document.getElementById('askBtn');
+  if (mode === 'research') {
+    btn.textContent = 'Research';
+    btn.classList.add('btn-research');
+  } else {
+    btn.textContent = 'Ask';
+    btn.classList.remove('btn-research');
+  }
+}
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
+  catch { return []; }
+}
+function addToHistory(q) {
+  let h = getHistory().filter(x => x !== q);
+  h.unshift(q);
+  if (h.length > MAX_HISTORY) h = h.slice(0, MAX_HISTORY);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
+  renderHistory();
+}
+function renderHistory() {
+  const c = document.getElementById('recentQuestions');
+  const h = getHistory();
+  if (!h.length) {
+    c.innerHTML = '<div class="doc-item" style="font-size:.78rem;justify-content:center">No questions yet</div>';
+    return;
+  }
+  c.innerHTML = h.map(q =>
+    `<div class="sample-q" onclick="askSample(this)">${escHtml(q)}</div>`
+  ).join('');
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, opts);
+  return res.json();
+}
+
+async function loadSidebar() {
+  try {
+    const [docs, stats] = await Promise.all([api('/api/documents'), api('/api/stats')]);
+    document.getElementById('docList').innerHTML = docs.documents.map(d =>
+      `<li class="doc-item"><span class="icon">doc</span>${d}</li>`
+    ).join('');
+    document.getElementById('statDocs').textContent = stats.documents;
+    document.getElementById('statChunks').textContent = stats.chunks;
+    document.getElementById('statVocab').textContent = stats.vocabulary_size.toLocaleString();
+    document.getElementById('statMode').textContent = stats.mode;
+  } catch(e) { console.error(e); }
+}
+
+async function submitQuestion() {
+  const input = document.getElementById('questionInput');
+  const q = input.value.trim();
+  if (!q || isLoading) return;
+
+  isLoading = true;
+  addToHistory(q);
+  document.getElementById('emptyState')?.remove();
+  document.getElementById('askBtn').disabled = true;
+
+  const msgContainer = document.getElementById('messages');
+  const loadingEl = document.createElement('div');
+  loadingEl.className = 'loading';
+  loadingEl.id = 'loadingIndicator';
+  const spinnerClass = currentMode === 'research' ? 'spinner research' : 'spinner';
+  const loadingText = currentMode === 'research'
+    ? 'Researching... (multi-step autonomous reasoning)'
+    : 'Analyzing documents...';
+  loadingEl.innerHTML = `<div class="${spinnerClass}"></div>${loadingText}`;
+  msgContainer.appendChild(loadingEl);
+  input.value = '';
+
+  try {
+    const endpoint = currentMode === 'research' ? '/api/research' : '/api/ask';
+    const data = await api(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q }),
+    });
+
+    document.getElementById('loadingIndicator')?.remove();
+    const msg = document.createElement('div');
+    msg.className = 'msg';
+
+    const modeLabel = data.mode === 'research' ? 'RESEARCH' : 'QUICK';
+    const modeClass = data.mode === 'research' ? 'research' : 'quick';
+
+    // Meta info
+    let metaHtml = `
+      <span class="badge ${data.confidence}">${data.confidence.toUpperCase()} confidence</span>
+      <span class="meta-time">${data.response_time}s</span>
+    `;
+    if (data.steps_taken) {
+      metaHtml += `<span class="meta-steps">${data.steps_taken} reasoning steps</span>`;
+    }
+
+    // Reasoning steps (research mode)
+    let reasoningHtml = '';
+    if (data.reasoning_steps && data.reasoning_steps.length > 0) {
+      const stepsId = 'steps-' + Date.now();
+      const stepsCards = data.reasoning_steps.map(s => {
+        let card = `<div class="step-card ${s.is_final ? 'final' : ''}">`;
+        card += `<div class="step-label">${s.is_final ? 'Final Synthesis' : 'Step ' + s.step}</div>`;
+        if (s.thought && !s.is_final) {
+          card += `<div class="step-thought">${escHtml(s.thought)}</div>`;
+        }
+        if (s.action) {
+          card += `<div class="step-action">${s.action}(${escHtml(JSON.stringify(s.action_input).slice(0,80))})</div>`;
+        }
+        if (s.observation && !s.is_final) {
+          card += `<div class="step-obs">${escHtml(s.observation)}</div>`;
+        }
+        card += '</div>';
+        return card;
+      }).join('');
+
+      reasoningHtml = `
+        <button class="reasoning-toggle" onclick="toggleReasoning('${stepsId}')">
+          &#9654; View ${data.reasoning_steps.length} reasoning steps
+        </button>
+        <div class="reasoning-steps" id="${stepsId}">${stepsCards}</div>
+      `;
+    }
+
+    // Sources
+    let sourcesHtml = '';
+    if (data.sources && data.sources.length > 0) {
+      const srcId = 'src-' + Date.now();
+      const srcItems = data.sources.map(s => {
+        const detail = s.section ? `${s.file} > ${s.section}` : s.file;
+        const score = s.relevance_score ? ` (${s.relevance_score})` : '';
+        return `<div class="source-item">${detail}${score}</div>`;
+      }).join('');
+      sourcesHtml = `
+        <button class="sources-toggle" onclick="toggleSources('${srcId}')">
+          &#9654; ${data.sources.length} source(s) referenced
+        </button>
+        <div class="sources-list" id="${srcId}">${srcItems}</div>
+      `;
+    }
+
+    msg.innerHTML = `
+      <div class="msg-q">${escHtml(q)}<span class="msg-mode ${modeClass}">${modeLabel}</span></div>
+      <div class="msg-answer">${formatAnswer(data.answer)}</div>
+      <div class="msg-meta">${metaHtml}</div>
+      ${reasoningHtml}
+      ${sourcesHtml}
+    `;
+    msgContainer.appendChild(msg);
+    msg.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+  } catch(e) {
+    document.getElementById('loadingIndicator')?.remove();
+    const err = document.createElement('div');
+    err.className = 'msg';
+    err.innerHTML = `<div class="msg-answer" style="color:var(--red)">Error: ${e.message}</div>`;
+    msgContainer.appendChild(err);
+  }
+
+  isLoading = false;
+  document.getElementById('askBtn').disabled = false;
+}
+
+function askSample(el) {
+  document.getElementById('questionInput').value = el.textContent;
+  submitQuestion();
+}
+function toggleSources(id) { document.getElementById(id).classList.toggle('open'); }
+function toggleReasoning(id) { document.getElementById(id).classList.toggle('open'); }
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+function formatAnswer(text) {
+  return escHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^• /gm, '&bull; ')
+    .replace(/^(\d+)\. /gm, '$1. ');
+}
+
+loadSidebar();
+renderHistory();
+document.getElementById('questionInput').focus();
+</script>
+</body>
+</html>
