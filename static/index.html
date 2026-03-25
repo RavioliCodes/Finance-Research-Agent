@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NexaGen – Leadership Insight Agent</title>
+<title>FinGen AI – Leadership Insight Agent</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -110,8 +110,9 @@ body{
 }
 .msg-answer{
   font-size:.9rem;line-height:1.7;color:var(--text);
-  white-space:pre-wrap;
 }
+.msg-answer table{white-space:normal}
+.msg-answer pre{white-space:pre-wrap}
 .msg-answer strong{color:var(--accent2)}
 .msg-meta{
   margin-top:16px;padding-top:14px;border-top:1px solid var(--border);
@@ -165,9 +166,9 @@ body{
   <aside class="sidebar">
     <div>
       <div class="logo">
-        <div class="logo-icon">N</div>
+        <div class="logo-icon">F</div>
         <div>
-          <div class="logo-text">NexaGen AI</div>
+          <div class="logo-text">FinGen AI</div>
           <div class="logo-sub">Leadership Insight Agent</div>
         </div>
       </div>
@@ -223,7 +224,7 @@ body{
 <script>
 // ---- State ----
 let isLoading = false;
-const HISTORY_KEY = 'nexagen_recent_questions';
+const HISTORY_KEY = 'fingen_recent_qa';
 const MAX_HISTORY = 5;
 
 function getHistory() {
@@ -231,9 +232,9 @@ function getHistory() {
   catch { return []; }
 }
 
-function addToHistory(q) {
-  let history = getHistory().filter(h => h !== q);
-  history.unshift(q);
+function addToHistory(q, a) {
+  let history = getHistory().filter(h => h.q !== q);
+  history.unshift({ q, a: a || '' });
   if (history.length > MAX_HISTORY) history = history.slice(0, MAX_HISTORY);
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
   renderHistory();
@@ -246,9 +247,32 @@ function renderHistory() {
     container.innerHTML = '<div class="doc-item" style="font-size:.78rem;justify-content:center">No questions yet</div>';
     return;
   }
-  container.innerHTML = history.map(q =>
-    `<div class="sample-q" onclick="askSample(this)">${escHtml(q)}</div>`
+  container.innerHTML = history.map((item, i) =>
+    `<div class="sample-q" onclick="loadHistoryItem(${i})" title="${escHtml(item.a).slice(0,200)}">
+       <span style="opacity:.5;font-size:.7rem">Q:</span> ${escHtml(item.q)}
+     </div>`
   ).join('');
+}
+
+function loadHistoryItem(index) {
+  const history = getHistory();
+  const item = history[index];
+  if (!item) return;
+  document.getElementById('questionInput').value = item.q;
+  // If there's a stored answer, show it in the messages area
+  if (item.a) {
+    document.getElementById('emptyState')?.remove();
+    const msgContainer = document.getElementById('messages');
+    const msg = document.createElement('div');
+    msg.className = 'msg';
+    msg.innerHTML = `
+      <div class="msg-q">${escHtml(item.q)}</div>
+      <div class="msg-answer">${formatAnswer(item.a)}</div>
+      <div class="msg-meta"><span style="color:var(--text2);font-size:.72rem">Loaded from history</span></div>
+    `;
+    msgContainer.appendChild(msg);
+    msg.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }
 }
 
 // ---- API helpers ----
@@ -282,7 +306,6 @@ async function askQuestion() {
   if (!q || isLoading) return;
 
   isLoading = true;
-  addToHistory(q);
   document.getElementById('emptyState')?.remove();
   document.getElementById('askBtn').disabled = true;
 
@@ -295,7 +318,7 @@ async function askQuestion() {
   loadingEl.innerHTML = '<div class="spinner"></div>Analyzing documents…';
   msgContainer.appendChild(loadingEl);
 
-  input.value = '';
+  // Keep query visible and editable — do NOT clear input
 
   try {
     const data = await api('/api/ask', {
@@ -305,6 +328,9 @@ async function askQuestion() {
     });
 
     document.getElementById('loadingIndicator')?.remove();
+
+    // Store Q+A in history
+    addToHistory(q, data.answer);
 
     const msg = document.createElement('div');
     msg.className = 'msg';
@@ -331,6 +357,7 @@ async function askQuestion() {
 
   } catch (e) {
     document.getElementById('loadingIndicator')?.remove();
+    addToHistory(q, '');
     const err = document.createElement('div');
     err.className = 'msg';
     err.innerHTML = `<div class="msg-answer" style="color:var(--red)">Error: ${e.message}</div>`;
@@ -339,6 +366,7 @@ async function askQuestion() {
 
   isLoading = false;
   document.getElementById('askBtn').disabled = false;
+  input.select();
 }
 
 function askSample(el) {
@@ -357,10 +385,68 @@ function escHtml(s) {
 }
 
 function formatAnswer(text) {
-  return escHtml(text)
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/^• /gm, '• ')
-    .replace(/^(\d+)\. /gm, '$1. ');
+  let html = escHtml(text);
+
+  // ---- Code blocks (``` ... ```) ----
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g,
+    '<pre style="background:var(--surface2);padding:12px;border-radius:8px;overflow-x:auto;font-family:JetBrains Mono,monospace;font-size:.82rem;margin:8px 0"><code>$2</code></pre>');
+
+  // ---- Inline code ----
+  html = html.replace(/`([^`]+)`/g,
+    '<code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-family:JetBrains Mono,monospace;font-size:.82rem">$1</code>');
+
+  // ---- Markdown tables ----
+  html = html.replace(/^(\|.+\|)\n(\|\s*[-:]+[-| :]*\|)\n((?:\|.+\|\n?)+)/gm, function(match, headerRow, separatorRow, bodyRows) {
+    const headers = headerRow.split('|').filter(c => c.trim());
+    const alignments = separatorRow.split('|').filter(c => c.trim()).map(c => {
+      c = c.trim();
+      if (c.startsWith(':') && c.endsWith(':')) return 'center';
+      if (c.endsWith(':')) return 'right';
+      return 'left';
+    });
+    let table = '<table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:.85rem">';
+    table += '<thead><tr>';
+    headers.forEach((h, i) => {
+      table += `<th style="text-align:${alignments[i]||'left'};padding:8px 12px;border-bottom:2px solid var(--border);color:var(--accent2);font-weight:600">${h.trim()}</th>`;
+    });
+    table += '</tr></thead><tbody>';
+    bodyRows.trim().split('\n').forEach(row => {
+      const cells = row.split('|').filter(c => c.trim());
+      table += '<tr>';
+      cells.forEach((c, i) => {
+        table += `<td style="text-align:${alignments[i]||'left'};padding:6px 12px;border-bottom:1px solid var(--border)">${c.trim()}</td>`;
+      });
+      table += '</tr>';
+    });
+    table += '</tbody></table>';
+    return table;
+  });
+
+  // ---- Images (markdown ![alt](url) and raw image URLs) ----
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g,
+    '<img src="$2" alt="$1" style="max-width:100%;border-radius:8px;margin:8px 0">');
+  html = html.replace(/(https?:\/\/\S+\.(?:png|jpg|jpeg|gif|svg|webp))(?=\s|$)/gi,
+    '<img src="$1" style="max-width:100%;border-radius:8px;margin:8px 0">');
+
+  // ---- Headers ----
+  html = html.replace(/^### (.+)$/gm, '<h4 style="margin:12px 0 4px;color:var(--accent2)">$1</h4>');
+  html = html.replace(/^## (.+)$/gm, '<h3 style="margin:14px 0 6px;color:var(--accent2)">$1</h3>');
+  html = html.replace(/^# (.+)$/gm, '<h2 style="margin:16px 0 8px;color:var(--accent2)">$1</h2>');
+
+  // ---- Bold & italic ----
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+  // ---- Bullet lists ----
+  html = html.replace(/^[•\-\*] (.+)$/gm, '<li style="margin-left:20px;list-style:disc;margin-bottom:2px">$1</li>');
+
+  // ---- Numbered lists ----
+  html = html.replace(/^(\d+)\. (.+)$/gm, '<li style="margin-left:20px;list-style:decimal;margin-bottom:2px">$2</li>');
+
+  // ---- Horizontal rules ----
+  html = html.replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid var(--border);margin:12px 0">');
+
+  return html;
 }
 
 // ---- Init ----
